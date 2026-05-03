@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Staazy Mobile",
+    "slug": "staazy-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#8A2BE2"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.staazy.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#8A2BE2"
+      },
+      "package": "com.staazy.mobile"
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

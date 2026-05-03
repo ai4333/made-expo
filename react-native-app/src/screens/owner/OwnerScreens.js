@@ -1,0 +1,1285 @@
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  Linking,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
+import { useAppData } from '../../context/AppDataContext';
+import PremiumIcon from '../../components/shared/PremiumIcon';
+import {
+  getOverallStats,
+  getPGStats,
+  ownerPGs,
+  ownerProfile,
+  ownerTenants,
+} from '../../data/ownerMockData';
+import {
+  Chip,
+  GREEN,
+  Header,
+  ORANGE,
+  PURPLE,
+  RED,
+  WA_GREEN,
+  formatINR,
+  getInitials,
+  styles,
+} from '../shared/mobileScreenKit';
+
+export function OwnerAuthScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const [phone, setPhone] = useState('');
+  const canContinue = phone.length === 10;
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginTop: 12, padding: 24 }]}>
+        <View style={[styles.iconBubble, { backgroundColor: C.ownerPrimaryGhost, width: 58, height: 58, borderRadius: 16, marginRight: 0 }]}> 
+          <PremiumIcon name="business" size={28} color={C.ownerPrimary} />
+        </View>
+        <Text style={[styles.pageTitle, { color: C.heading, fontSize: 30, marginTop: 18 }]}>Owner Portal</Text>
+        <Text style={[styles.sectionSubtle, { color: C.muted, marginBottom: 0 }]}>Sign in to manage your properties, tenant updates, and rent collections in one place.</Text>
+
+        <Text style={[styles.inputLabel, { color: C.muted, marginTop: 26, marginBottom: 8 }]}>Mobile Number</Text>
+        <View
+          style={[
+            styles.searchBox,
+            {
+              marginTop: 0,
+              backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
+              borderColor: C.border,
+            },
+          ]}
+        >
+          <Text style={{ color: C.ownerPrimary, fontWeight: '800', marginRight: 8, fontSize: 15 }}>+91</Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="number-pad"
+            maxLength={10}
+            placeholder="Enter 10-digit phone"
+            placeholderTextColor={C.muted}
+            style={[styles.searchInput, { color: C.heading, marginLeft: 4 }]}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            {
+              backgroundColor: canContinue ? C.ownerPrimary : isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0',
+              marginTop: 20,
+            },
+          ]}
+          disabled={!canContinue}
+          onPress={() => navigation.navigate('OwnerVerifyOTP', { phone })}
+        >
+          <Text style={[styles.primaryButtonText, { color: canContinue ? '#FFFFFF' : C.muted }]}>Send OTP</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => navigation.replace('OwnerMain')}>
+          <Text style={{ color: C.ownerPrimary, fontSize: 14, fontWeight: '700' }}>Continue in Demo Mode</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginTop: 10 }]}>
+        <Text style={[styles.cardTitle, { color: C.heading }]}>What you can do here</Text>
+        <View style={{ marginTop: 12, gap: 10 }}>
+          {['Track occupancy and vacant beds', 'Review tenant messages and complaints', 'Monitor rent and expenses quickly'].map((item) => (
+            <View key={item} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <PremiumIcon name="checkmark-circle" size={16} color={C.ownerPrimary} />
+              <Text style={[styles.cardSub, { color: C.body, marginLeft: 10 }]}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+export function OwnerVerifyOTPScreen({ navigation, route }) {
+  const { C, isDark } = useTheme();
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const refs = useRef([]);
+
+  const handleOTP = (value, idx) => {
+    const next = [...otp];
+    next[idx] = value;
+    setOtp(next);
+    if (value && idx < 5) refs.current[idx + 1]?.focus();
+  };
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Header title="Verify OTP" navigation={navigation} />
+
+      <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginTop: 12, padding: 24 }]}>
+        <Text style={[styles.cardTitle, { color: C.heading, fontSize: 20 }]}>Enter verification code</Text>
+        <Text style={[styles.sectionSubtle, { color: C.muted, marginTop: 8, marginBottom: 0 }]}>We sent a 6-digit code to +91 {route?.params?.phone || '**********'}.</Text>
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 }}>
+          {otp.map((digit, idx) => (
+            <TextInput
+              key={idx}
+              ref={(r) => (refs.current[idx] = r)}
+              value={digit}
+              onChangeText={(val) => handleOTP(val, idx)}
+              keyboardType="number-pad"
+              maxLength={1}
+              style={[
+                styles.otpInput,
+                {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
+                  borderColor: digit ? C.ownerPrimary : C.border,
+                  color: C.heading,
+                },
+              ]}
+            />
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            {
+              backgroundColor: otp.join('').length === 6 ? C.ownerPrimary : isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0',
+              marginTop: 28,
+            },
+          ]}
+          disabled={otp.join('').length !== 6}
+          onPress={() => navigation.navigate('OwnerOnboarding')}
+        >
+          <Text style={[styles.primaryButtonText, { color: otp.join('').length === 6 ? '#FFFFFF' : C.muted }]}>Verify and Continue</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={{ alignSelf: 'center', marginTop: 14 }}>
+          <Text style={{ color: C.muted, fontSize: 13, fontWeight: '600' }}>
+            Didn't receive it? <Text style={{ color: C.ownerPrimary, fontWeight: '800' }}>Resend OTP</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+}
+
+export function OwnerOnboardingScreen({ navigation }) {
+  const { C } = useTheme();
+  const [count, setCount] = useState('1');
+  const [experience, setExperience] = useState('5');
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Header title="Owner Onboarding" navigation={navigation} />
+      <Text style={[styles.sectionSubtle, { color: C.muted }]}>Set up your profile so the dashboard can personalize your property operations.</Text>
+
+      <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}> 
+        <Text style={[styles.cardTitle, { color: C.heading }]}>How many properties do you manage?</Text>
+        <View style={[styles.filterRow, { marginTop: 14 }]}> 
+          {['1', '2-3', '4-6', '7+'].map((item) => (
+            <Chip key={item} label={item} active={count === item} onPress={() => setCount(item)} activeColor={C.ownerPrimary} />
+          ))}
+        </View>
+      </View>
+
+      <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}> 
+        <Text style={[styles.cardTitle, { color: C.heading }]}>Years of property management experience</Text>
+        <TextInput
+          value={experience}
+          onChangeText={setExperience}
+          keyboardType="number-pad"
+          style={[styles.input, { borderColor: C.border, color: C.heading, backgroundColor: '#FFFFFF', fontSize: 16, fontWeight: '700', marginTop: 14, marginBottom: 0 }]}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={[styles.primaryButton, { backgroundColor: C.ownerPrimary }]}
+        onPress={() => navigation.navigate('OwnerKYC')}
+      >
+        <Text style={styles.primaryButtonText}>Continue to Verification</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+export function OwnerKYCScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const [checks, setChecks] = useState({ pan: false, bank: false, property: false });
+
+  const done = checks.pan && checks.bank && checks.property;
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Header title="Verification" navigation={navigation} />
+      <Text style={[styles.sectionSubtle, { color: C.muted }]}>Complete these checks to enable payouts and increase tenant trust on your profile.</Text>
+      
+      {[
+        { key: 'pan', label: 'PAN Verification', desc: 'Used for owner identity and compliance checks' },
+        { key: 'bank', label: 'Bank Account Setup', desc: 'Used for rent settlements and transaction records' },
+        { key: 'property', label: 'Property Ownership Proof', desc: 'Upload a proof document for your listed PG' },
+      ].map((item) => (
+        <TouchableOpacity
+          key={item.key}
+          onPress={() => setChecks((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
+          style={[
+            styles.listRow, 
+            { 
+              backgroundColor: C.card,
+              borderColor: checks[item.key] ? C.ownerPrimary + '55' : C.border,
+              borderLeftWidth: 4,
+              borderLeftColor: checks[item.key] ? C.ownerPrimary : C.muted,
+            }
+          ]}
+        >
+          <PremiumIcon
+            name={checks[item.key] ? 'checkmark-circle' : 'ellipse-outline'}
+            size={18}
+            color={checks[item.key] ? C.ownerPrimary : C.muted}
+          />
+          <View style={[styles.flex1, { marginLeft: 16 }]}> 
+            <Text style={[styles.rowTitle, { color: C.heading }]}>{item.label}</Text>
+            <Text style={[styles.rowSub, { color: C.muted, marginTop: 4 }]}>{item.desc}</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
+
+      <TouchableOpacity
+        style={[styles.primaryButton, { backgroundColor: done ? C.ownerPrimary : isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0', marginTop: 24 }]}
+        disabled={!done}
+        onPress={() => navigation.replace('OwnerMain')}
+      >
+        <Text style={[styles.primaryButtonText, { color: done ? '#FFFFFF' : C.muted }]}>Finish Setup</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+export function OwnerDashboardScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const { ownerNotifications } = useAppData();
+  const stats = getOverallStats();
+  const overdue = ownerTenants.filter((t) => t.rentStatus === 'overdue').slice(0, 3);
+  const pending = ownerTenants.filter((t) => t.rentStatus === 'pending').length;
+  const occupancy = stats.totalBeds ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100) : 0;
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.bottomPadLarge}>
+      <View style={styles.screenPad}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: '#047857',
+              borderColor: '#065F46',
+              marginTop: 12,
+              borderRadius: 28,
+              padding: 24,
+            },
+          ]}
+        >
+          <View style={styles.rowBetween}>
+            <View>
+              <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>OWNER DASHBOARD</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '800', marginTop: 8, letterSpacing: -0.6 }}>Good Evening</Text>
+              <Text style={{ color: '#ECFDF5', fontSize: 14, marginTop: 4 }}>Occupancy at {occupancy}% across your properties</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.3)' }]}
+              onPress={() => navigation.navigate('OwnerNotifications')}
+            >
+              <PremiumIcon name="notifications" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ marginTop: 18, height: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' }}>
+            <View style={{ width: `${occupancy}%`, backgroundColor: '#FFFFFF', height: '100%' }} />
+          </View>
+
+          <View style={[styles.rowBetween, { marginTop: 18 }]}> 
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>COLLECTED</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '900', marginTop: 4 }}>{formatINR(stats.collectedRent)}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>OVERDUE</Text>
+              <Text style={{ color: '#FEF08A', fontSize: 20, fontWeight: '900', marginTop: 4 }}>{formatINR(stats.overdueRent)}</Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: C.muted, marginTop: 4 }]}>Quick Actions</Text>
+        <View style={[styles.quickGrid, { gap: 12 }]}> 
+          {[
+            { label: 'Properties', icon: 'business', color: C.ownerPrimary, action: () => navigation.navigate('OwnerMain', { screen: 'PGList' }) },
+            { label: 'Rent', icon: 'receipt', color: '#2563EB', action: () => navigation.navigate('OwnerMain', { screen: 'Rent' }) },
+            { label: 'Expenses', icon: 'card', color: '#EF4444', action: () => navigation.navigate('ExpenseTracker') },
+          ].map((item) => (
+            <TouchableOpacity 
+              key={item.label} 
+              style={[styles.quickCard, { backgroundColor: C.card, borderColor: C.border }]}
+              onPress={item.action}
+            >
+              <View style={[styles.iconBubble, { backgroundColor: item.color + '1A', marginRight: 0, marginBottom: 12 }]}> 
+                <PremiumIcon name={item.icon} size={22} color={item.color} />
+              </View>
+              <Text style={[styles.quickLabel, { color: C.heading, fontSize: 11 }]}>{item.label.toUpperCase()}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={[styles.rowBetween, { marginTop: 32, marginBottom: 16 }]}> 
+          <Text style={[styles.sectionTitle, { color: C.muted, marginVertical: 0 }]}>Rent Attention</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('OwnerMain', { screen: 'PGList' })}>
+             <Text style={{ color: C.ownerPrimary, fontSize: 13, fontWeight: '700' }}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, paddingVertical: 14 }]}> 
+          <View style={styles.rowBetween}>
+            <Text style={[styles.cardSub, { color: C.muted, fontWeight: '700' }]}>Pending Tenants</Text>
+            <Text style={{ color: '#2563EB', fontWeight: '900' }}>{pending}</Text>
+          </View>
+          <View style={[styles.rowBetween, { marginTop: 10 }]}> 
+            <Text style={[styles.cardSub, { color: C.muted, fontWeight: '700' }]}>Overdue Tenants</Text>
+            <Text style={{ color: RED, fontWeight: '900' }}>{overdue.length}</Text>
+          </View>
+        </View>
+
+        {overdue.length === 0 ? (
+          <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}> 
+            <Text style={[styles.cardSub, { color: GREEN, fontWeight: '700' }]}>All accounts are currently cleared.</Text>
+          </View>
+        ) : (
+          overdue.map((t) => (
+            <TouchableOpacity
+              key={t.id}
+              onPress={() => navigation.navigate('TenantDetail', { tenantId: t.id })}
+              style={[styles.listRow, { backgroundColor: C.card, borderColor: RED + '33', borderLeftWidth: 4, borderLeftColor: RED }]}
+            >
+              <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: RED + '1A', alignItems: 'center', justifyContent: 'center' }}> 
+                <Text style={{ color: RED, fontWeight: '800', fontSize: 12 }}>{getInitials(t.name)}</Text>
+              </View>
+              <View style={[styles.flex1, { marginLeft: 12 }]}> 
+                <Text style={[styles.rowTitle, { color: C.heading }]}>{t.name}</Text>
+                <Text style={[styles.rowSub, { color: C.muted, fontSize: 11, fontWeight: '700' }]}>Unit {t.roomNumber} · Due {formatINR(t.monthlyRent)}</Text>
+              </View>
+              <PremiumIcon name="alert-circle" size={16} color={RED} />
+            </TouchableOpacity>
+          ))
+        )}
+
+        <Text style={[styles.sectionTitle, { color: C.muted }]}>Recent Activity</Text>
+        {ownerNotifications.slice(0, 3).map((n) => (
+          <View key={n.id} style={[styles.card, { backgroundColor: C.card, borderColor: C.border, paddingVertical: 14 }]}> 
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.iconBubble, { width: 38, height: 38, borderRadius: 12, marginRight: 12, backgroundColor: C.ownerPrimaryGhost }]}> 
+                <PremiumIcon name="notifications" size={16} color={C.ownerPrimary} />
+              </View>
+              <View style={styles.flex1}>
+                <Text style={[styles.rowTitle, { color: C.heading, fontSize: 14 }]}>{n.message}</Text>
+                <Text style={[styles.rowSub, { color: C.muted, fontSize: 11, marginTop: 4 }]}>{n.time}</Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+export function PGListScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <View style={[styles.rowBetween, { marginBottom: 8 }]}> 
+        <Text style={[styles.pageTitle, { color: C.heading }]}>My Properties</Text>
+        <TouchableOpacity 
+          style={[styles.smallPrimary, { backgroundColor: C.ownerPrimary }]}
+          onPress={() => Alert.alert('Action Restricted', 'Managing unit ingestion is currently disabled in demo mode.')}
+        > 
+          <Text style={styles.smallPrimaryText}>Add Property</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={[styles.sectionSubtle, { color: C.muted, marginBottom: 12 }]}>Monitor occupancy, vacancy, and overdue units across your listed PGs.</Text>
+
+      {ownerPGs.map((pg) => {
+        const pgStats = getPGStats(pg.id);
+        const occupancy = pgStats.totalBeds ? Math.round((pgStats.occupiedBeds / pgStats.totalBeds) * 100) : 0;
+        return (
+          <TouchableOpacity
+            key={pg.id}
+            onPress={() => navigation.navigate('PGView', { pgId: pg.id })}
+            style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginBottom: 18, padding: 0, overflow: 'hidden' }]}
+          >
+            <View style={{ padding: 18 }}>
+              <View style={styles.rowBetween}>
+                <Text style={[styles.cardTitle, { color: C.heading, fontSize: 18 }]}>{pg.name}</Text>
+                <View
+                  style={[
+                    styles.badge,
+                    {
+                      backgroundColor: pg.type === 'Girls' ? '#DBEAFE' : '#DCFCE7',
+                      borderColor: pg.type === 'Girls' ? '#93C5FD' : '#86EFAC',
+                      borderWidth: 1,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: pg.type === 'Girls' ? '#1D4ED8' : '#166534', fontWeight: '800', fontSize: 10 }}>{pg.type.toUpperCase()}</Text>
+                </View>
+              </View>
+              <Text style={[styles.cardSub, { color: C.muted, marginTop: 6, fontSize: 13 }]}>{pg.address}, {pg.city}</Text>
+
+              <View style={{ marginTop: 16 }}>
+                <View style={styles.rowBetween}>
+                  <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700' }}>Occupancy</Text>
+                  <Text style={{ color: C.ownerPrimary, fontSize: 11, fontWeight: '900' }}>{occupancy}%</Text>
+                </View>
+                <View style={{ marginTop: 8, height: 8, borderRadius: 999, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0', overflow: 'hidden' }}>
+                  <View style={{ width: `${occupancy}%`, height: '100%', backgroundColor: C.ownerPrimary }} />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', marginTop: 18, gap: 10 }}>
+                <View style={{ flex: 1, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 10 }}>
+                  <Text style={{ color: C.muted, fontSize: 10, fontWeight: '800' }}>TOTAL BEDS</Text>
+                  <Text style={{ color: C.heading, fontSize: 17, fontWeight: '900', marginTop: 4 }}>{pgStats.totalBeds}</Text>
+                </View>
+                <View style={{ flex: 1, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 10 }}>
+                  <Text style={{ color: C.muted, fontSize: 10, fontWeight: '800' }}>VACANT</Text>
+                  <Text style={{ color: ORANGE, fontSize: 17, fontWeight: '900', marginTop: 4 }}>{pgStats.vacantBeds}</Text>
+                </View>
+                <View style={{ flex: 1, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 10 }}>
+                  <Text style={{ color: C.muted, fontSize: 10, fontWeight: '800' }}>OVERDUE</Text>
+                  <Text style={{ color: RED, fontSize: 17, fontWeight: '900', marginTop: 4 }}>{pgStats.overdueBeds}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('PGView', { pgId: pg.id })}
+                style={{ marginTop: 18, borderWidth: 1, borderColor: C.ownerPrimary + '55', backgroundColor: C.ownerPrimary + '14', borderRadius: 14, paddingVertical: 12, alignItems: 'center' }}
+              >
+                <Text style={{ color: C.ownerPrimary, fontWeight: '800', fontSize: 13 }}>View Property Details</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+export function PGViewScreen({ navigation, route }) {
+  const { C, isDark } = useTheme();
+  const pg = ownerPGs.find((item) => item.id === route?.params?.pgId) || ownerPGs[0];
+  const pgTenants = ownerTenants.filter((t) => t.pgId === pg.id);
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.bottomPadLarge}>
+      <View style={styles.screenPad}>
+        <Header title="Property Details" navigation={navigation} />
+
+        <View style={[styles.card, { marginTop: 20, backgroundColor: C.card, borderColor: C.border }]}> 
+          <Text style={[styles.pageTitle, { color: C.heading, fontSize: 22 }]}>{pg.name}</Text>
+          <Text style={[styles.cardSub, { color: C.muted, marginTop: 4 }]}>{pg.address}, {pg.city}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+            <PremiumIcon name="calendar" size={14} color={C.ownerPrimary} />
+            <Text style={[styles.cardSub, { color: C.muted, marginLeft: 8, fontSize: 12, fontWeight: '700' }]}>Rent Due: {pg.rentDueDate}th of every month</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: C.muted }]}>Unit Mapping</Text>
+        <View style={{ gap: 12 }}>
+          {pg.rooms.map((room) => (
+            <View key={room.id} style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}> 
+              <View style={styles.rowBetween}>
+                <Text style={[styles.cardTitle, { color: C.heading, fontSize: 16 }]}>Unit {room.number}</Text>
+                <Text style={{ color: C.muted, fontSize: 11, fontWeight: '800' }}>{room.beds.length} BEDS</Text>
+              </View>
+              <View style={[styles.rowCenter, { marginTop: 16, gap: 10 }]}> 
+                {room.beds.map((bed) => {
+                  const color = bed.status === 'vacant' ? (isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9') : bed.status === 'overdue' ? RED : C.ownerPrimary;
+                  const borderColor = bed.status === 'vacant' ? (isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0') : color;
+                  return (
+                    <View key={bed.id} style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: color, borderWidth: 1, borderColor: borderColor }} />
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 32, marginBottom: 16 }}>
+          <Text style={[styles.sectionTitle, { color: C.muted, marginTop: 0 }]}>Tenants</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('AddTenant', { pgId: pg.id })}>
+            <Text style={{ color: C.ownerPrimary, fontSize: 13, fontWeight: '700' }}>+ Add Tenant</Text>
+          </TouchableOpacity>
+        </View>
+
+        {pgTenants.map((tenant) => (
+          <TouchableOpacity
+            key={tenant.id}
+            style={[styles.listRow, { backgroundColor: C.card, borderColor: C.border }]}
+            onPress={() => navigation.navigate('TenantDetail', { tenantId: tenant.id })}
+          >
+            <View style={[styles.avatar40, { backgroundColor: C.ownerPrimaryGhost, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }]}> 
+              <Text style={{ color: C.ownerPrimary, fontWeight: '800', fontSize: 12 }}>{getInitials(tenant.name)}</Text>
+            </View>
+            <View style={styles.flex1}>
+              <Text style={[styles.rowTitle, { color: C.heading }]}>{tenant.name}</Text>
+              <Text style={[styles.rowSub, { color: C.muted, textTransform: 'uppercase', fontSize: 10, fontWeight: '700' }]}>Unit {tenant.roomNumber} · Bed {tenant.bedNumber}</Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: tenant.rentStatus === 'paid' ? GREEN + '1A' : tenant.rentStatus === 'overdue' ? RED + '1A' : ORANGE + '1A' }]}>
+              <Text style={{ color: tenant.rentStatus === 'paid' ? GREEN : tenant.rentStatus === 'overdue' ? RED : ORANGE, fontWeight: '800', fontSize: 10 }}>
+                {tenant.rentStatus.toUpperCase()}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+export function RentOverviewScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const [filter, setFilter] = useState('All');
+
+  const filteredTenants = ownerTenants.filter((t) => filter === 'All' || t.rentStatus === filter.toLowerCase());
+  const paid = ownerTenants.filter((t) => t.rentStatus === 'paid').length;
+  const pending = ownerTenants.filter((t) => t.rentStatus === 'pending').length;
+  const overdue = ownerTenants.filter((t) => t.rentStatus === 'overdue').length;
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <View style={[styles.rowBetween, { marginBottom: 24 }]}>
+        <Text style={[styles.pageTitle, { color: C.heading }]}>Rent Overview</Text>
+        <TouchableOpacity onPress={() => Alert.alert('Report Export', 'Generating detailed financial summary...')}> 
+          <PremiumIcon name="download" size={24} color={C.ownerPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={[styles.quickGrid, { gap: 12 }]}>
+        {[
+          { label: 'CLEARED', value: paid, color: GREEN },
+          { label: 'PENDING', value: pending, color: ORANGE },
+          { label: 'OVERDUE', value: overdue, color: RED },
+        ].map((item) => (
+          <View key={item.label} style={[styles.quickCard, { backgroundColor: C.card, borderColor: C.border, padding: 16 }]}> 
+            <Text style={{ fontWeight: '900', color: item.color, fontSize: 22 }}>{item.value}</Text>
+            <Text style={{ color: C.muted, fontSize: 10, fontWeight: '800', marginTop: 6 }}>{item.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={[styles.filterRow, { marginTop: 32, marginBottom: 16 }]}>
+        {['All', 'Paid', 'Pending', 'Overdue'].map((f) => (
+          <Chip
+            key={f}
+            label={f}
+            active={filter === f}
+            onPress={() => setFilter(f)}
+            activeColor={f === 'Overdue' ? RED : C.ownerPrimary}
+          />
+        ))}
+      </View>
+
+      {filteredTenants.map((tenant) => (
+        <TouchableOpacity
+          key={tenant.id}
+          onPress={() => navigation.navigate('TenantDetail', { tenantId: tenant.id })}
+          style={[styles.listRow, { backgroundColor: C.card, borderColor: C.border }]}
+        >
+          <View style={[styles.avatar40, { backgroundColor: C.ownerPrimaryGhost, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }]}> 
+            <Text style={{ color: C.ownerPrimary, fontWeight: '800', fontSize: 12 }}>{getInitials(tenant.name)}</Text>
+          </View>
+          <View style={styles.flex1}>
+            <Text style={[styles.rowTitle, { color: C.heading }]}>{tenant.name}</Text>
+            <Text style={[styles.rowSub, { color: C.muted, fontSize: 11 }]}>Unit {tenant.roomNumber}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.rowTitle, { color: C.heading, fontWeight: '800' }]}>{formatINR(tenant.monthlyRent)}</Text>
+            <View style={{ marginTop: 6 }}>
+               <Text style={{ color: tenant.rentStatus === 'paid' ? GREEN : tenant.rentStatus === 'overdue' ? RED : ORANGE, fontSize: 10, fontWeight: '800' }}>
+                 {tenant.rentStatus.toUpperCase()}
+               </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
+}
+
+export function TenantDetailScreen({ navigation, route }) {
+  const { C } = useTheme();
+  const tenant = ownerTenants.find((t) => t.id === route?.params?.tenantId) || ownerTenants[0];
+  const statusColor = tenant.rentStatus === 'paid' ? GREEN : tenant.rentStatus === 'overdue' ? RED : ORANGE;
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.bottomPadLarge}>
+      <View style={styles.screenPad}>
+        <Header title="Tenant Profile" navigation={navigation} />
+
+        <View style={[styles.profileHero, { marginTop: 12, alignItems: 'center', backgroundColor: C.card, borderColor: C.border, paddingVertical: 26 }]}> 
+          <View style={[styles.avatarFallbackLarge, { backgroundColor: C.ownerPrimaryGhost, borderColor: C.ownerPrimary + '66', borderWidth: 1, width: 80, height: 80, borderRadius: 40 }]}> 
+            <Text style={{ color: C.ownerPrimary, fontWeight: '800', fontSize: 28 }}>{getInitials(tenant.name)}</Text>
+          </View>
+          <Text style={[styles.pageTitle, { color: C.heading, marginTop: 16, fontSize: 24 }]}>{tenant.name}</Text>
+          <Text style={[styles.cardSub, { color: C.body, fontWeight: '700', letterSpacing: 0.2 }]}>{tenant.phone}</Text>
+          <View style={[styles.badge, { marginTop: 12, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' }]}> 
+            <Text style={{ color: C.heading, fontSize: 11, fontWeight: '800' }}>Unit {tenant.roomNumber} · Bed {tenant.bedNumber}</Text>
+          </View>
+          <View style={[styles.badge, { marginTop: 10, backgroundColor: statusColor + '1A' }]}> 
+            <Text style={{ color: statusColor, fontSize: 10, fontWeight: '900' }}>RENT STATUS: {tenant.rentStatus.toUpperCase()}</Text>
+          </View>
+        </View>
+
+        <View style={[styles.card, { marginTop: 18, backgroundColor: C.card, borderColor: C.border }]}> 
+          <Text style={[styles.sectionTitle, { color: C.muted, fontSize: 11, fontWeight: '800', marginTop: 0, marginBottom: 18 }]}>TENANCY SUMMARY</Text>
+          <View style={{ gap: 14 }}>
+            <View style={styles.rowBetween}>
+              <Text style={{ color: C.body, fontSize: 14 }}>Monthly Rent</Text>
+              <Text style={{ color: C.heading, fontWeight: '800', fontSize: 15 }}>{formatINR(tenant.monthlyRent)}</Text>
+            </View>
+            <View style={styles.rowBetween}>
+              <Text style={{ color: C.body, fontSize: 14 }}>Security Deposit</Text>
+              <Text style={{ color: C.heading, fontWeight: '800', fontSize: 15 }}>{formatINR(tenant.advancePaid)}</Text>
+            </View>
+            <View style={styles.rowBetween}>
+              <Text style={{ color: C.body, fontSize: 14 }}>Move-in Date</Text>
+              <Text style={{ color: C.heading, fontWeight: '800', fontSize: 15 }}>{tenant.joinDate}</Text>
+            </View>
+            <View style={styles.rowBetween}>
+              <Text style={{ color: C.body, fontSize: 14 }}>PG Name</Text>
+              <Text style={{ color: C.heading, fontWeight: '800', fontSize: 15 }}>{tenant.pgName}</Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: C.muted, fontSize: 11, fontWeight: '800', marginTop: 30, marginBottom: 12 }]}>PAYMENT HISTORY</Text>
+        {tenant.rentHistory.map((item, idx) => (
+          <View key={`${item.month}-${idx}`} style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginBottom: 12 }]}> 
+            <View style={styles.rowBetween}>
+              <Text style={[styles.cardTitle, { color: C.heading, fontSize: 15 }]}>{item.month}</Text>
+              <View style={[styles.badge, { backgroundColor: item.status === 'paid' ? GREEN + '1A' : RED + '1A', paddingHorizontal: 10, paddingVertical: 5 }]}> 
+                <Text style={{ color: item.status === 'paid' ? GREEN : RED, fontWeight: '800', fontSize: 10 }}>
+                  {item.status.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.rowBetween, { marginTop: 14 }]}> 
+              <Text style={{ color: C.heading, fontSize: 14, fontWeight: '700' }}>{formatINR(item.amount)}</Text>
+              {item.paidDate ? <Text style={{ color: C.muted, fontSize: 11, fontWeight: '600' }}>Paid: {item.paidDate}</Text> : null}
+            </View>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+export function AddTenantScreen({ navigation, route }) {
+  const { C, isDark } = useTheme();
+  const defaultPg = ownerPGs.find((pg) => pg.id === route?.params?.pgId) || ownerPGs[0];
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [selectedPg, setSelectedPg] = useState(defaultPg.id);
+
+  const currentPg = ownerPGs.find((pg) => pg.id === selectedPg) || ownerPGs[0];
+  const vacantBeds = currentPg.rooms.flatMap((room) => room.beds.map((bed) => ({ ...bed, roomNumber: room.number }))).filter((bed) => bed.status === 'vacant');
+  const [selectedBed, setSelectedBed] = useState(vacantBeds[0]?.id || '');
+
+  useEffect(() => {
+    setSelectedBed(vacantBeds[0]?.id || '');
+  }, [selectedPg]);
+
+  const submit = () => {
+    if (!name.trim() || phone.length < 10 || !selectedBed) {
+      Alert.alert('Incomplete Data', 'Please fill in the name, phone, and select an available unit.');
+      return;
+    }
+    Alert.alert('Tenant Added', `${name} has been assigned to ${currentPg.name}.`, [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
+  };
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Header title="Add Tenant" navigation={navigation} />
+      <Text style={[styles.sectionSubtle, { color: C.muted, marginTop: 12 }]}>Enter tenant details and assign them to an available unit in your property.</Text>
+
+      <View style={[styles.card, { marginTop: 24, backgroundColor: C.card, borderColor: C.border }]}> 
+        <Text style={[styles.inputLabel, { color: C.muted, fontSize: 11, fontWeight: '800' }]}>FULL NAME</Text>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Rahul Sharma"
+          placeholderTextColor={C.muted}
+          style={[styles.input, { borderColor: C.border, color: C.heading, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF', marginTop: 10 }]}
+        />
+
+        <Text style={[styles.inputLabel, { color: C.muted, fontSize: 11, fontWeight: '800', marginTop: 24 }]}>PHONE NUMBER</Text>
+        <TextInput
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="number-pad"
+          maxLength={10}
+          placeholder="+91 00000 00000"
+          placeholderTextColor={C.muted}
+          style={[styles.input, { borderColor: C.border, color: C.heading, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF', marginTop: 10 }]}
+        />
+
+        <Text style={[styles.inputLabel, { color: C.muted, fontSize: 11, fontWeight: '800', marginTop: 24 }]}>SELECT PROPERTY</Text>
+        <View style={[styles.filterRow, { marginTop: 12 }]}>
+          {ownerPGs.map((pg) => (
+            <Chip key={pg.id} label={pg.name} active={selectedPg === pg.id} onPress={() => setSelectedPg(pg.id)} activeColor={C.ownerPrimary} />
+          ))}
+        </View>
+
+        <Text style={[styles.inputLabel, { color: C.muted, fontSize: 11, fontWeight: '800', marginTop: 24 }]}>SELECT UNIT</Text>
+        <View style={[styles.filterRow, { marginTop: 12 }]}>
+          {vacantBeds.length === 0 ? (
+            <Text style={{ color: RED, fontSize: 13, fontWeight: '700', paddingVertical: 10 }}>No vacant units available.</Text>
+          ) : (
+            vacantBeds.map((bed) => (
+              <Chip
+                key={bed.id}
+                label={`Unit ${bed.roomNumber} (Bed ${bed.number})`}
+                active={selectedBed === bed.id}
+                onPress={() => setSelectedBed(bed.id)}
+                activeColor={C.ownerPrimary}
+              />
+            ))
+          )}
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.primaryButton, { backgroundColor: C.ownerPrimary, marginTop: 40 }]}
+        onPress={submit}
+      >
+        <Text style={styles.primaryButtonText}>Add Tenant</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+export function WhatsAppHubScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const overdueTenants = ownerTenants.filter((t) => t.rentStatus === 'overdue' || t.rentStatus === 'pending');
+  const overdueCount = overdueTenants.filter((t) => t.rentStatus === 'overdue').length;
+  const pendingCount = overdueTenants.filter((t) => t.rentStatus === 'pending').length;
+
+  const sendWhatsApp = async (tenant) => {
+    const number = tenant.phone.replace(/[^0-9]/g, '');
+    const msg = encodeURIComponent(
+      `Hi ${tenant.name}, this is a reminder for your pending rent of ${formatINR(tenant.monthlyRent)} for Unit ${tenant.roomNumber}. Please clear it at the earliest. Thank you.`
+    );
+    const url = `https://wa.me/${number}?text=${msg}`;
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert('Unable to Open WhatsApp', 'Please make sure WhatsApp is installed on this device.');
+    }
+  };
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Header title="WhatsApp Reminders" navigation={navigation} />
+      <Text style={[styles.sectionSubtle, { color: C.muted, marginTop: 8 }]}>Send rent reminders in one tap. This opens WhatsApp with a pre-filled message for each tenant.</Text>
+
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: C.card,
+            borderColor: WA_GREEN + '55',
+            marginTop: 16,
+          },
+        ]}
+      > 
+        <View style={styles.rowBetween}>
+          <Text style={[styles.cardTitle, { color: GREEN }]}>Reminder Queue</Text>
+          <View style={[styles.badge, { backgroundColor: C.ownerPrimaryGhost, borderWidth: 1, borderColor: WA_GREEN + '66' }]}> 
+            <Text style={{ color: GREEN, fontWeight: '900', fontSize: 10 }}>{overdueTenants.length} TENANTS</Text>
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', marginTop: 14, gap: 10 }}>
+          <View style={{ flex: 1, borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 12, padding: 10, backgroundColor: '#FEF2F2' }}>
+            <Text style={{ color: '#B91C1C', fontSize: 10, fontWeight: '800' }}>OVERDUE</Text>
+            <Text style={{ color: '#B91C1C', fontSize: 20, fontWeight: '900', marginTop: 4 }}>{overdueCount}</Text>
+          </View>
+          <View style={{ flex: 1, borderWidth: 1, borderColor: '#FCD34D', borderRadius: 12, padding: 10, backgroundColor: '#FFFBEB' }}>
+            <Text style={{ color: '#B45309', fontSize: 10, fontWeight: '800' }}>PENDING</Text>
+            <Text style={{ color: '#B45309', fontSize: 20, fontWeight: '900', marginTop: 4 }}>{pendingCount}</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.cardSub, { color: C.body, marginTop: 12 }]}>Templates available: rent reminder, maintenance update, monthly notice.</Text>
+      </View>
+
+      <Text style={[styles.sectionTitle, { color: C.muted, fontSize: 11, marginTop: 28, marginBottom: 12 }]}>TENANTS TO REMIND</Text>
+
+      {overdueTenants.length === 0 ? (
+        <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, alignItems: 'center', paddingVertical: 30 }]}> 
+          <View style={[styles.iconBubble, { backgroundColor: WA_GREEN + '1A', width: 56, height: 56, borderRadius: 16, marginRight: 0 }]}> 
+            <PremiumIcon name="logo-whatsapp" size={30} color={WA_GREEN} />
+          </View>
+          <Text style={[styles.cardTitle, { color: C.heading, marginTop: 14 }]}>All clear</Text>
+          <Text style={[styles.cardSub, { color: C.muted, marginTop: 6, textAlign: 'center' }]}>No pending or overdue tenants right now.</Text>
+        </View>
+      ) : (
+        overdueTenants.map((tenant) => (
+          <View key={tenant.id} style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginBottom: 12 }]}> 
+            <View style={styles.rowBetween}>
+              <View style={styles.flex1}>
+                <Text style={[styles.cardTitle, { color: C.heading, fontSize: 16 }]}>{tenant.name}</Text>
+                <Text style={[styles.cardSub, { color: C.muted, fontSize: 12, marginTop: 4 }]}>{tenant.phone} · Unit {tenant.roomNumber}</Text>
+                <View style={[styles.badge, { alignSelf: 'flex-start', marginTop: 10, backgroundColor: tenant.rentStatus === 'overdue' ? RED + '1A' : ORANGE + '1A' }]}>
+                  <Text style={{ color: tenant.rentStatus === 'overdue' ? RED : ORANGE, fontWeight: '800', fontSize: 10 }}>
+                    {tenant.rentStatus.toUpperCase()} · {formatINR(tenant.monthlyRent)}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => sendWhatsApp(tenant)}
+                style={{ backgroundColor: WA_GREEN, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}
+              >
+                <PremiumIcon name="logo-whatsapp" size={15} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12, marginLeft: 6 }}>Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))
+      )}
+
+      <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, marginTop: 8 }]}> 
+        <Text style={[styles.cardTitle, { color: C.heading, fontSize: 14 }]}>How it works</Text>
+        <View style={{ marginTop: 10, gap: 8 }}>
+          {[
+            'Tap Send on any tenant card',
+            'WhatsApp opens with a pre-filled reminder',
+            'Review and send from your WhatsApp account',
+          ].map((item) => (
+            <View key={item} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <PremiumIcon name="checkmark-circle" size={14} color={isDark ? C.ownerPrimaryLight : C.ownerPrimary} />
+              <Text style={[styles.cardSub, { color: C.body, marginLeft: 8 }]}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+export function OwnerMessagesScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const {
+    ownerThreads,
+    getOwnerConversation,
+    markOwnerThreadRead,
+    sendOwnerReply,
+  } = useAppData();
+  const [activeTenantId, setActiveTenantId] = useState(ownerThreads[0]?.tenantId || null);
+  const [replyText, setReplyText] = useState('');
+
+  useEffect(() => {
+    if (!activeTenantId && ownerThreads.length > 0) {
+      setActiveTenantId(ownerThreads[0].tenantId);
+    }
+  }, [ownerThreads, activeTenantId]);
+
+  const activeThreadId = activeTenantId || ownerThreads[0]?.tenantId || null;
+  const activeConversation = activeThreadId ? getOwnerConversation(activeThreadId) : [];
+
+  const onOpenThread = (tenantId) => {
+    setActiveTenantId(tenantId);
+    markOwnerThreadRead(tenantId);
+  };
+
+  const onSendReply = () => {
+    if (!activeThreadId) {
+      Alert.alert('Error', 'Select a conversation to reply.');
+      return;
+    }
+    const result = sendOwnerReply(activeThreadId, replyText);
+    if (!result.ok) {
+      Alert.alert('Error', result.error);
+      return;
+    }
+    setReplyText('');
+  };
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.bottomPadLarge}>
+      <View style={styles.screenPad}>
+        <Header title="Messages" navigation={navigation} />
+
+        {ownerThreads.length === 0 ? (
+          <View style={[styles.card, { marginTop: 24, backgroundColor: C.card, borderColor: C.border }]}> 
+            <Text style={[styles.cardTitle, { color: C.heading }]}>No messages yet</Text>
+            <Text style={[styles.cardSub, { color: C.muted, marginTop: 8 }]}>Messages from your tenants will appear here when they reach out.</Text>
+          </View>
+        ) : (
+          <View style={{ marginTop: 24 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 24 }}>
+              {ownerThreads.map((thread) => (
+                <TouchableOpacity
+                  key={thread.tenantId}
+                  onPress={() => onOpenThread(thread.tenantId)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: activeThreadId === thread.tenantId ? C.ownerPrimary : C.card,
+                      borderColor: activeThreadId === thread.tenantId ? C.ownerPrimary : C.border,
+                      borderWidth: 1,
+                      marginRight: 12,
+                      paddingHorizontal: 18,
+                      height: 44,
+                      borderRadius: 22,
+                      justifyContent: 'center'
+                    },
+                  ]}
+                >
+                  <Text style={{ color: activeThreadId === thread.tenantId ? '#FFF' : C.heading, fontSize: 13, fontWeight: '700' }}>{thread.tenantName}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, padding: 0, overflow: 'hidden' }]}> 
+              <View style={[styles.rowBetween, { padding: 16, borderBottomWidth: 1, borderBottomColor: C.border }]}>
+                <Text style={[styles.cardTitle, { color: C.muted, fontSize: 11, fontWeight: '800' }]}>CONVERSATION LOG</Text>
+                <PremiumIcon name="shield-checkmark" size={14} color={GREEN} />
+              </View>
+
+              <ScrollView style={{ maxHeight: 400, padding: 16 }}>
+                {activeConversation.length === 0 ? (
+                  <Text style={[styles.cardSub, { color: C.muted, textAlign: 'center', marginVertical: 20 }]}>Select a tenant to view history.</Text>
+                ) : (
+                  <View style={{ gap: 16 }}>
+                    {activeConversation.map((msg) => {
+                      const isOwner = msg.senderRole === 'owner';
+                      return (
+                        <View
+                          key={msg.id}
+                          style={{
+                            alignSelf: isOwner ? 'flex-end' : 'flex-start',
+                            maxWidth: '85%',
+                            backgroundColor: isOwner ? C.ownerPrimary : (isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9'),
+                            borderRadius: 16,
+                            paddingHorizontal: 14,
+                            paddingVertical: 10,
+                          }}
+                        >
+                          <Text style={{ color: isOwner ? '#FFFFFF' : C.heading, fontSize: 14, lineHeight: 20 }}>{msg.text}</Text>
+                          <Text
+                            style={{
+                              color: isOwner ? 'rgba(255,255,255,0.7)' : C.muted,
+                              fontSize: 9,
+                              fontWeight: '700',
+                              textAlign: 'right',
+                              marginTop: 6,
+                            }}
+                          >
+                            {msg.timeLabel}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </ScrollView>
+
+              <View style={[styles.searchBox, { margin: 16, marginTop: 16, paddingRight: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF', borderColor: C.border }]}> 
+                <TextInput
+                  value={replyText}
+                  onChangeText={setReplyText}
+                  placeholder="Type a message..."
+                  placeholderTextColor={C.muted}
+                  style={[styles.searchInput, { color: C.heading, fontSize: 14 }]}
+                />
+                <TouchableOpacity
+                  style={[styles.smallPrimary, { backgroundColor: C.ownerPrimary, width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}
+                  onPress={onSendReply}
+                >
+                  <PremiumIcon name="send" size={16} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+export function OwnerComplaintsScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const { ownerComplaints, advanceOwnerComplaintStatus } = useAppData();
+  const [filter, setFilter] = useState('All');
+
+  const visible = ownerComplaints.filter((i) => filter === 'All' || i.status === filter);
+
+  const nextStatusLabel = (status) => {
+    if (status === 'Pending') return 'Start Progress';
+    if (status === 'In Progress') return 'Mark Resolved';
+    return 'Resolved';
+  };
+
+  const statusColor = (status) => {
+    if (status === 'Resolved') return GREEN;
+    if (status === 'In Progress') return ORANGE;
+    return RED;
+  };
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Header title="Complaints" navigation={navigation} />
+      <Text style={[styles.sectionSubtle, { color: C.muted, marginTop: 12 }]}>Track and manage maintenance requests and tenant grievances efficiently.</Text>
+
+      <View style={[styles.filterRow, { marginTop: 24, marginBottom: 16 }]}>
+        {['All', 'Pending', 'In Progress', 'Resolved'].map((f) => (
+          <Chip key={f} label={f} active={filter === f} onPress={() => setFilter(f)} activeColor={f === 'Pending' ? RED : C.ownerPrimary} />
+        ))}
+      </View>
+
+      {visible.map((item) => (
+        <View key={item.id} style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}> 
+          <View style={styles.rowBetween}>
+            <Text style={[styles.cardTitle, { color: C.heading, fontSize: 17 }]}>{item.title}</Text>
+            <View style={[styles.badge, { backgroundColor: statusColor(item.status) + '1A', borderColor: statusColor(item.status) + '33', borderWidth: 1 }]}>
+               <Text style={{ color: statusColor(item.status), fontWeight: '900', fontSize: 10 }}>{item.status.toUpperCase()}</Text>
+            </View>
+          </View>
+          <Text style={[styles.cardSub, { color: C.muted, fontSize: 13, marginTop: 6 }]}>{item.tenant} · Unit {item.room}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14 }}>
+            <PremiumIcon name="flag" size={14} color={item.priority === 'Urgent' ? RED : C.muted} />
+            <Text style={[styles.cardSub, { color: item.priority === 'Urgent' ? RED : C.muted, marginLeft: 8, fontSize: 11, fontWeight: '800' }]}>PRIORITY: {item.priority.toUpperCase()}</Text>
+          </View>
+          
+          {item.status !== 'Resolved' ? (
+            <TouchableOpacity
+              style={[styles.smallPrimary, { backgroundColor: C.ownerPrimary, alignSelf: 'flex-start', marginTop: 20 }]}
+              onPress={() => advanceOwnerComplaintStatus(item.id)}
+            >
+              <Text style={styles.smallPrimaryText}>{nextStatusLabel(item.status).toUpperCase()}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+export function OwnerNotificationsScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const {
+    ownerNotifications,
+    markOwnerNotificationRead,
+    markAllOwnerNotificationsRead,
+  } = useAppData();
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Header
+        title="Alerts"
+        navigation={navigation}
+        right={
+          <TouchableOpacity
+            onPress={markAllOwnerNotificationsRead}
+            style={[styles.iconButton, { backgroundColor: C.ownerPrimaryGhost }]}
+          >
+            <PremiumIcon name="checkmark-done" size={18} color={C.ownerPrimary} />
+          </TouchableOpacity>
+        }
+      />
+
+      <View style={{ marginTop: 24 }}>
+        {ownerNotifications.map((n) => (
+          <TouchableOpacity
+            key={n.id}
+            onPress={() => markOwnerNotificationRead(n.id)}
+            style={[
+              styles.listRow,
+              {
+                backgroundColor: C.card,
+                borderColor: n.read ? C.border : C.ownerPrimary + '33',
+                borderLeftWidth: n.read ? 1 : 4,
+                borderLeftColor: n.read ? C.border : C.ownerPrimary,
+                marginBottom: 12
+              },
+            ]}
+          >
+            <View style={[styles.iconBubble, { backgroundColor: C.ownerPrimaryGhost, borderRadius: 10 }]}> 
+              <PremiumIcon name="notifications" size={15} color={n.read ? C.muted : C.ownerPrimary} />
+            </View>
+            <View style={styles.flex1}>
+              <Text style={[styles.rowTitle, { color: n.read ? C.muted : C.heading, fontSize: 14 }]}>{n.message}</Text>
+              <Text style={[styles.rowSub, { color: C.muted, fontSize: 10, fontWeight: '700', marginTop: 4 }]}>{n.time}</Text>
+            </View>
+            {n.action ? <Text style={{ color: C.ownerPrimary, fontSize: 10, fontWeight: '800' }}>{n.action}</Text> : null}
+          </TouchableOpacity>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+export function OwnerSettingsScreen({ navigation }) {
+  const { C } = useTheme();
+  const { backend } = useAppData();
+  const [notifOn, setNotifOn] = useState(true);
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Text style={[styles.pageTitle, { color: C.heading, marginBottom: 32 }]}>Settings</Text>
+
+      <View style={[styles.profileHero, { alignItems: 'center', marginBottom: 40, backgroundColor: C.card, borderColor: C.border, padding: 24, borderRadius: 24 }]}> 
+        <View style={[styles.avatarFallbackLarge, { backgroundColor: C.ownerPrimaryGhost, borderColor: C.ownerPrimary, borderWidth: 1, width: 80, height: 80, borderRadius: 40 }]}> 
+          <Text style={{ color: C.ownerPrimary, fontWeight: '800', fontSize: 28 }}>{ownerProfile.avatar}</Text>
+        </View>
+        <Text style={[styles.cardTitle, { color: C.heading, marginTop: 16, fontSize: 20 }]}>{ownerProfile.name}</Text>
+        <Text style={[styles.cardSub, { color: C.muted, fontSize: 13, marginTop: 4 }]}>{ownerProfile.email}</Text>
+        <View style={[styles.badge, { marginTop: 16, backgroundColor: backend.connected ? GREEN + '1A' : ORANGE + '1A' }]}>
+          <Text style={{ color: backend.connected ? GREEN : ORANGE, fontSize: 10, fontWeight: '900' }}>
+            {backend.connected ? 'Cloud Connected' : 'Demo Mode'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <View style={[styles.listRow, { backgroundColor: C.card, borderColor: C.border }]}> 
+          <PremiumIcon name="notifications" size={18} color={C.ownerPrimary} />
+          <Text style={[styles.rowTitle, { color: C.heading, marginLeft: 16 }]}>Notifications</Text>
+          <View style={styles.flex1} />
+          <Switch value={notifOn} onValueChange={setNotifOn} trackColor={{ true: C.ownerPrimary }} thumbColor="#FFF" />
+        </View>
+
+        <View style={[styles.listRow, { backgroundColor: C.card, borderColor: C.border }]}> 
+          <PremiumIcon name="color-palette" size={18} color={C.ownerPrimary} />
+          <Text style={[styles.rowTitle, { color: C.heading, marginLeft: 16 }]}>Theme</Text>
+          <View style={styles.flex1} />
+          <Text style={[styles.rowSub, { color: C.muted, fontWeight: '700' }]}>Staazy Classic</Text>
+        </View>
+
+        {[
+          { label: 'My Properties', icon: 'business', action: () => navigation.navigate('PGList') },
+          { label: 'Expense Tracker', icon: 'receipt', action: () => navigation.navigate('ExpenseTracker') },
+          { label: 'My Complaints', icon: 'alert-circle', action: () => navigation.navigate('OwnerComplaints') },
+        ].map((item) => (
+          <TouchableOpacity
+            key={item.label}
+            style={[styles.listRow, { backgroundColor: C.card, borderColor: C.border }]}
+            onPress={item.action}
+          >
+            <PremiumIcon name={item.icon} size={18} color={C.ownerPrimary} />
+            <Text style={[styles.rowTitle, { color: C.heading, marginLeft: 16 }]}>{item.label}</Text>
+            <View style={styles.flex1} />
+            <PremiumIcon name="chevron-forward" size={16} color={C.muted} />
+          </TouchableOpacity>
+        ))}
+
+        <TouchableOpacity
+          style={[styles.listRow, { backgroundColor: C.card, borderColor: RED + '33', borderLeftWidth: 4, borderLeftColor: RED, marginTop: 20 }]}
+          onPress={() => navigation.navigate('RoleSelection')}
+        >
+          <PremiumIcon name="log-out" size={18} color={RED} />
+          <Text style={[styles.rowTitle, { color: RED, marginLeft: 16, fontWeight: '800' }]}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={[styles.footerText, { color: C.muted, fontSize: 11, fontWeight: '700', marginTop: 48, textAlign: 'center' }]}>Staazy v2.0.4 • Powered by Premium Design</Text>
+    </ScrollView>
+  );
+}
+
+export function ExpenseTrackerScreen({ navigation }) {
+  const { C, isDark } = useTheme();
+  const { ownerExpenseEntries, addOwnerExpense } = useAppData();
+  const [filter, setFilter] = useState('All');
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('Maintenance');
+
+  const filtered = ownerExpenseEntries.filter((e) => filter === 'All' || e.category === filter);
+  const total = filtered.reduce((sum, e) => sum + e.amount, 0);
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: C.bg }]} contentContainerStyle={styles.screenPad}>
+      <Header title="Expenses" navigation={navigation} />
+      
+      <View style={[styles.ownerStatsGrid, { marginTop: 24, gap: 12 }]}>
+        <View style={[styles.ownerStatCard, { backgroundColor: C.card, borderColor: C.border, padding: 16, borderRadius: 20 }]}> 
+          <Text style={{ fontSize: 10, color: C.muted, fontWeight: '800' }}>ENTRIES</Text>
+          <Text style={{ fontSize: 24, color: C.heading, fontWeight: '900', marginTop: 6 }}>{filtered.length}</Text>
+        </View>
+        <View style={[styles.ownerStatCard, { backgroundColor: C.card, borderColor: C.border, padding: 16, borderRadius: 20 }]}> 
+          <Text style={{ fontSize: 10, color: C.muted, fontWeight: '800' }}>TOTAL SPENT</Text>
+          <Text style={{ fontSize: 24, color: C.ownerPrimary, fontWeight: '900', marginTop: 6 }}>{formatINR(total)}</Text>
+        </View>
+      </View>
+
+      <View style={[styles.filterRow, { marginTop: 24, marginBottom: 16 }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {['All', 'Maintenance', 'Electricity', 'Water', 'Groceries'].map((f) => (
+            <Chip key={f} label={f} active={filter === f} onPress={() => setFilter(f)} activeColor={C.ownerPrimary} />
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}> 
+        <Text style={[styles.sectionTitle, { color: C.muted, fontSize: 11, fontWeight: '800', marginTop: 0, marginBottom: 16 }]}>LOG NEW EXPENSE</Text>
+        <TextInput
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="number-pad"
+          placeholder="Amount (₹)"
+          placeholderTextColor={C.muted}
+          style={[styles.input, { borderColor: C.border, color: C.heading, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF', marginBottom: 16 }]}
+        />
+        <View style={[styles.filterRow, { marginVertical: 8 }]}>
+          {['Maintenance', 'Electricity', 'Water', 'Groceries'].map((cat) => (
+            <Chip key={cat} label={cat} active={category === cat} onPress={() => setCategory(cat)} activeColor={C.ownerPrimary} />
+          ))}
+        </View>
+        <TouchableOpacity
+          style={[styles.primaryButton, { backgroundColor: C.ownerPrimary, marginTop: 24 }]}
+          onPress={() => {
+            const result = addOwnerExpense({ amount, category });
+            if (!result.ok) {
+              Alert.alert('Error', result.error);
+              return;
+            }
+            Alert.alert('Logged', `${formatINR(amount)} logged under ${category}.`);
+            setAmount('');
+          }}
+        >
+          <Text style={styles.primaryButtonText}>Save Expense</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={[styles.sectionTitle, { color: C.muted, fontSize: 11, fontWeight: '800', marginTop: 32, marginBottom: 16 }]}>EXPENSE HISTORY</Text>
+      {filtered.map((item) => (
+        <View key={item.id} style={[styles.listRow, { backgroundColor: C.card, borderColor: C.border }]}> 
+          <View style={[styles.iconBubble, { backgroundColor: C.ownerPrimaryGhost, borderRadius: 10 }]}> 
+            <PremiumIcon name="receipt" size={16} color={C.ownerPrimary} />
+          </View>
+          <View style={styles.flex1}>
+            <Text style={[styles.rowTitle, { color: C.heading, fontSize: 14 }]}>{item.category}</Text>
+            <Text style={[styles.rowSub, { color: C.muted, fontSize: 10, fontWeight: '700', marginTop: 4 }]}>{item.pgName} · {item.date}</Text>
+          </View>
+          <Text style={{ color: C.heading, fontWeight: '900', fontSize: 15 }}>{formatINR(item.amount)}</Text>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
